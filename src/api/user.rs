@@ -3,18 +3,25 @@ use axum::{
     extract::Path,
     http::StatusCode,
 };
+use sea_orm::{ColumnTrait, Condition, Database, EntityTrait, QueryFilter};
 
-#[derive(serde::Serialize)]
-pub struct User {
-    id: i32,
-    name: &'static str,
-}
+use crate::entity::user::{Column, Entity, Model};
 
-pub async fn get_user(Path(id): Path<i32>) -> (StatusCode, Json<User>) {
+const DATABASE_URL: &str = "postgresql://postgres:password@localhost:5432/db";
+
+pub async fn get_user(Path(id): Path<i32>) -> (StatusCode, Json<Model>) {
+    let conn = Database::connect(DATABASE_URL).await.unwrap();
+    let mut condition = Condition::any();
+    condition = condition.add(Column::Id.eq(id));
+
+    let user = Entity::find()
+        .filter(condition)
+        .one(&conn)
+        .await
+        .unwrap()
+        .unwrap();
     (
         StatusCode::OK,
-        Json(
-            User { id: id, name: "username" }
-        ),
+        Json(user),
     )
 }
