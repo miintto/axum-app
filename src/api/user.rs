@@ -1,21 +1,18 @@
 use axum::{
     Json,
-    extract::Path,
+    extract::{Path, State},
     http::StatusCode,
 };
-use sea_orm::{ColumnTrait, Condition, Database, EntityTrait, QueryFilter};
+use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
 
 use crate::entity::user::{Column, Entity, Model};
 
-const DATABASE_URL: &str = "postgresql://postgres:password@localhost:5432/db";
-
-pub async fn get_user(Path(id): Path<i32>) -> (StatusCode, Json<Model>) {
-    let conn = Database::connect(DATABASE_URL).await.unwrap();
-    let mut condition = Condition::any();
-    condition = condition.add(Column::Id.eq(id));
-
-    let user = Entity::find()
-        .filter(condition)
+pub async fn get_user(
+    State(conn): State<DatabaseConnection>,
+    Path(id): Path<i32>,
+) -> (StatusCode, Json<Model>) {
+    let user: Model = Entity::find()
+        .filter(Column::Id.eq(id))
         .one(&conn)
         .await
         .unwrap()
