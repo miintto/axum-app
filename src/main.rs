@@ -1,6 +1,7 @@
-mod api;
 mod config;
 mod entity;
+mod repository;
+mod router;
 
 use axum::{
     Router,
@@ -8,8 +9,8 @@ use axum::{
 };
 use sea_orm::DatabaseConnection;
 
-use api::user::{get_user};
 use config::db::{init_db};
+use router::user::{get_user};
 
 #[tokio::main]
 async fn main() {
