@@ -1,5 +1,6 @@
 mod config;
 mod core;
+mod dto;
 mod entity;
 mod repository;
 mod service;
