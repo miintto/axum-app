@@ -6,12 +6,12 @@ mod service;
 
 use axum::{
     Router,
-    routing::{get},
+    routing::{get, post},
 };
 use sea_orm::DatabaseConnection;
 
 use config::db::{init_db};
-use service::user::{get_user, get_user_list};
+use service::{auth::{login, register}, user::{get_user, get_user_list}};
 
 #[tokio::main]
 async fn main() {
@@ -25,6 +25,8 @@ async fn main() {
 
     let app = Router::new()
         .route("/", get(|| async move { "ok" }))
+        .route("/auth/login", post(login))
+        .route("/auth/register", post(register))
         .nest("/users", user_router)
         .with_state(conn);
 

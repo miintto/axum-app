@@ -1,25 +1,15 @@
-use axum::{Json, response::{IntoResponse, Response}};
-use serde_json::json;
+use axum::response::{IntoResponse, Response};
 
-use crate::core::http::HttpCode;
+use crate::core::{http::{Http4xx, Http5xx}, response::ApiResponse};
 
-pub struct ApiError<T: HttpCode> {
-    pub http: T,
-}
-
-impl<T: HttpCode> ApiError<T> {
-    pub fn new(http: T) -> Self{
-        Self { http }
+impl IntoResponse for Http4xx {
+    fn into_response(self) -> Response {
+        ApiResponse::new(self, ()).into_response()
     }
 }
 
-impl<T: HttpCode> IntoResponse for ApiError<T> {
+impl IntoResponse for Http5xx {
     fn into_response(self) -> Response {
-        let message = json!({
-            "code": self.http.code(),
-            "message": self.http.message(),
-            "data": null,
-        });
-        (self.http.status(), Json(message)).into_response()
+        ApiResponse::new(self, ()).into_response()
     }
 }

@@ -1,3 +1,4 @@
+use chrono::NaiveDateTime;
 use sea_orm::entity::prelude::*;
 
 use serde::{Deserialize, Serialize};
@@ -9,6 +10,10 @@ pub struct Model {
     pub id: i32,
     pub name: String,
     pub email: String,
+    pub hashed_password: String,
+    pub is_active: bool,
+    pub is_admin: bool,
+    pub created_dtm: NaiveDateTime,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
