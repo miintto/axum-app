@@ -1,7 +1,8 @@
 mod config;
+mod core;
 mod entity;
 mod repository;
-mod router;
+mod service;
 
 use axum::{
     Router,
@@ -10,7 +11,7 @@ use axum::{
 use sea_orm::DatabaseConnection;
 
 use config::db::{init_db};
-use router::user::{get_user};
+use service::user::{get_user, get_user_list};
 
 #[tokio::main]
 async fn main() {
@@ -19,6 +20,7 @@ async fn main() {
     let conn: DatabaseConnection = init_db().await;
 
     let user_router = Router::new()
+        .route("/", get(get_user_list))
         .route("/{id}", get(get_user));
 
     let app = Router::new()
