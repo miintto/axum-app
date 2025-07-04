@@ -1,8 +1,13 @@
-use axum::{Json, extract::State};
+use axum::extract::State;
 use sea_orm::DatabaseConnection;
 use serde::Deserialize;
 
-use crate::core::{http::{Http2xx, Http4xx}, jwt::encode_jwt, response::ApiResponse};
+use crate::core::{
+    http::{Http2xx, Http4xx},
+    jwt::encode_jwt,
+    response::ApiResponse,
+    validate::Json,
+};
 use crate::repository::user::{create_user, find_by_email};
 
 #[derive(Debug, Deserialize)]

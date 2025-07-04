@@ -2,7 +2,7 @@ use axum::{Json, http::StatusCode, response::{IntoResponse, Response}};
 use serde::Serialize;
 use serde_json::json;
 
-use crate::core::http::HttpCode;
+use crate::core::http::{HttpCode, Http4xx, Http5xx};
 
 pub struct ApiResponse<T> {
     status: StatusCode,
@@ -30,5 +30,17 @@ impl<T: Serialize> IntoResponse for ApiResponse<T> {
             "data": self.data,
         });
         (self.status, Json(message)).into_response()
+    }
+}
+
+impl IntoResponse for Http4xx {
+    fn into_response(self) -> Response {
+        ApiResponse::new(self, ()).into_response()
+    }
+}
+
+impl IntoResponse for Http5xx {
+    fn into_response(self) -> Response {
+        ApiResponse::new(self, ()).into_response()
     }
 }

@@ -35,6 +35,9 @@ impl HttpCode for Http2xx {
 }
 
 pub enum Http4xx {
+    BadRequest,
+    Unauthenticated,
+    PermissionDenied,
     InvalidParameter,
     UserNotFound,
     PasswordMismatched,
@@ -45,6 +48,9 @@ pub enum Http4xx {
 impl HttpCode for Http4xx {
     fn status(&self) -> StatusCode {
         match self {
+            Http4xx::BadRequest => StatusCode::BAD_REQUEST,
+            Http4xx::Unauthenticated => StatusCode::UNAUTHORIZED,
+            Http4xx::PermissionDenied => StatusCode::FORBIDDEN,
             Http4xx::InvalidParameter => StatusCode::UNPROCESSABLE_ENTITY,
             Http4xx::UserNotFound => StatusCode::NOT_FOUND,
             Http4xx::PasswordMismatched => StatusCode::NOT_FOUND,
@@ -55,16 +61,22 @@ impl HttpCode for Http4xx {
 
     fn code(&self) -> &'static str {
         match self {
-            Http4xx::InvalidParameter => "F001",
-            Http4xx::UserNotFound => "F002",
-            Http4xx::PasswordMismatched => "F003",
-            Http4xx::DuplicatedEmail => "F004",
-            Http4xx::AuthenticationFail => "F005",
+            Http4xx::BadRequest => "F001",
+            Http4xx::Unauthenticated => "F002",
+            Http4xx::PermissionDenied => "F003",
+            Http4xx::InvalidParameter => "F004",
+            Http4xx::UserNotFound => "F005",
+            Http4xx::PasswordMismatched => "F006",
+            Http4xx::DuplicatedEmail => "F007",
+            Http4xx::AuthenticationFail => "F008",
         }
     }
 
     fn message(&self) -> &'static str {
         match self {
+            Http4xx::BadRequest => "잘못된 요청",
+            Http4xx::Unauthenticated => "인증 실패",
+            Http4xx::PermissionDenied => "권한이 없습니다",
             Http4xx::InvalidParameter => "파라미터 에러",
             Http4xx::UserNotFound => "사용자를 찾을 수 없습니다.",
             Http4xx::PasswordMismatched => "패스워드가 서로 일치하지 않습니다.",
