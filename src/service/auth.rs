@@ -34,7 +34,10 @@ pub async fn login(
     if !bcrypt::verify(body.password, &user.hashed_password).unwrap() {
         return Err(Http4xx::AuthenticationFail)
     }
-    Ok(ApiResponse::new(Http2xx::Ok, encode_jwt(user.id, &user.email)))
+    Ok(ApiResponse::new(
+        Http2xx::Ok,
+        encode_jwt(user.id, &user.email, get_permission_level(user.is_admin))),
+    )
 }
 
 pub async fn register(
@@ -52,5 +55,15 @@ pub async fn register(
         &body.email,
         bcrypt::hash(&body.password, 10).unwrap()
     ).await;
-    Ok(ApiResponse::new(Http2xx::Created, encode_jwt(user.id, &user.email)))
+    Ok(ApiResponse::new(
+        Http2xx::Created,
+        encode_jwt(user.id, &user.email, get_permission_level(user.is_admin)),
+    ))
+}
+
+fn get_permission_level(is_admin: bool) -> i8 {
+    match is_admin {
+        true => 2,
+        false => 1,
+    }
 }

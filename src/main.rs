@@ -13,7 +13,10 @@ use config::{
     db::{init_db},
     logging::{layer::get_trace_layer, registry::init_logging},
 };
-use service::{auth::{login, register}, user::{get_user, get_user_list}};
+use service::{
+    auth::{login, register},
+    user::{get_my_info, get_user, get_user_list},
+};
 
 #[tokio::main]
 async fn main() {
@@ -26,7 +29,8 @@ async fn main() {
 
     let user_router = Router::new()
         .route("/", get(get_user_list))
-        .route("/{id}", get(get_user));
+        .route("/{id}", get(get_user))
+        .route("/me", get(get_my_info));
 
     let app = Router::new()
         .route("/", get(|| async move { "ok" }))
