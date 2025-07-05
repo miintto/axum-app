@@ -27,16 +27,13 @@ async fn main() {
     let conn: DatabaseConnection = init_db().await;
     info!("Connect Database!");
 
-    let user_router = Router::new()
-        .route("/", get(get_user_list))
-        .route("/{id}", get(get_user))
-        .route("/me", get(get_my_info));
-
     let app = Router::new()
         .route("/", get(|| async move { "ok" }))
         .route("/auth/login", post(login))
         .route("/auth/register", post(register))
-        .nest("/users", user_router)
+        .route("/users", get(get_user_list))
+        .route("/users/{id}", get(get_user))
+        .route("/users/me", get(get_my_info))
         .layer(get_trace_layer())
         .with_state(conn);
 
