@@ -1,41 +1,36 @@
-use axum::{extract::{Path, State}};
 use sea_orm::DatabaseConnection;
 
-use crate::core::{
-    http::{Http2xx, Http4xx},
-    permission::{AdminOnly, Authenticated},
-    response::ApiResponse,
-};
+use crate::core::http::Http4xx;
 use crate::dto::user::UserResponse;
-use crate::repository::user::{find_all, find_by_id};
+use crate::repository::user::UserRepository;
 
-pub async fn get_user_list(
-    AdminOnly(_): AdminOnly,
-    State(conn): State<DatabaseConnection>,
-) -> ApiResponse<Vec<UserResponse>> {
-    let users = find_all(&conn).await;
-    ApiResponse::new(Http2xx::Ok, users.into_iter().map(UserResponse::from).collect())
+#[derive(Clone)]
+pub struct UserService {
+    user_repo: UserRepository,
 }
 
-pub async fn get_user(
-    AdminOnly(_): AdminOnly,
-    State(conn): State<DatabaseConnection>,
-    Path(id): Path<i32>,
-) -> Result<ApiResponse<UserResponse>, Http4xx> {
-    match find_by_id(&conn, id).await
-    {
-        Some(user) => Ok(ApiResponse::new(Http2xx::Ok, UserResponse::from(user))),
-        None => Err(Http4xx::UserNotFound),
+impl UserService {
+    pub fn new(user_repo: UserRepository) -> Self {
+        Self { user_repo }
     }
-}
 
-pub async fn get_my_info(
-    Authenticated(claims): Authenticated,
-    State(conn): State<DatabaseConnection>,
-) -> Result<ApiResponse<UserResponse>, Http4xx> {
-    match find_by_id(&conn, claims.user_id).await
-    {
-        Some(user) => Ok(ApiResponse::new(Http2xx::Ok, UserResponse::from(user))),
-        None => Err(Http4xx::UserNotFound),
+    pub async fn get_user_list(
+        &self,
+        conn: DatabaseConnection,
+    ) -> Vec<UserResponse> {
+        let users = self.user_repo.find_all(&conn).await;
+        users.into_iter().map(UserResponse::from).collect()
+    }
+
+    pub async fn get_user(
+        &self,
+        conn: DatabaseConnection,
+        id: i32,
+    ) -> Result<UserResponse, Http4xx> {
+        match self.user_repo.find_by_id(&conn, id).await
+        {
+            Some(user) => Ok(UserResponse::from(user)),
+            None => Err(Http4xx::UserNotFound),
+        }
     }
 }
