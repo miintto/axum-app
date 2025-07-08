@@ -5,57 +5,65 @@ use sea_orm::{
     ColumnTrait,
     DatabaseConnection,
     EntityTrait,
-    QueryFilter, QueryOrder,
+    QueryFilter,
+    QueryOrder,
 };
 
 use crate::{core::http::Http4xx, entity::{prelude::User, user::{ActiveModel, Column, Model}}};
 
+pub trait UserRepositoryPort: Send + Sync {
+    async fn find_all(&self) -> Vec<Model>;
+
+    async fn find_by_id(&self, id: i32) -> Option<Model>;
+
+    async fn find_by_email(&self, email: &String) -> Option<Model>;
+
+    async fn create_user(
+        &self,
+        name: &String,
+        email: &String,
+        hashed_password: String,
+    ) -> Result<Model, Http4xx>;
+}
+
 #[derive(Clone)]
-pub struct UserRepository;
+pub struct UserRepository {
+    db: DatabaseConnection,
+}
 
 impl UserRepository {
-    pub fn new() -> Self {
-        Self
+    pub fn new(db: &DatabaseConnection) -> Self {
+        Self { db: db.clone() }
     }
+}
 
-    pub async fn find_all(
-        &self,
-        conn: &DatabaseConnection,
-    ) -> Vec<Model> {
+impl UserRepositoryPort for UserRepository {
+    async fn find_all(&self) -> Vec<Model> {
         User::find()
             .order_by_asc(Column::Id)
-            .all(conn)
+            .all(&self.db)
             .await
             .unwrap()
     }
 
-    pub async fn find_by_id(
-        &self,
-        conn: &DatabaseConnection,
-        id: i32,
-    ) -> Option<Model> {
+    async fn find_by_id(&self, id: i32) -> Option<Model> {
         User::find()
             .filter(Column::Id.eq(id))
-            .one(conn)
+            .one(&self.db)
             .await
             .unwrap()
     }
 
-    pub async fn find_by_email(
-        &self,
-        conn: &DatabaseConnection,
-        email: &String,
-    ) -> Option<Model> {
+    async fn find_by_email(&self, email: &String) -> Option<Model> {
         User::find()
             .filter(Column::Email.eq(email))
-            .one(conn)
+            .one(&self.db)
             .await
             .unwrap()
     }
 
-    pub async fn create_user(
+    async fn create_user(
         &self,
-        conn: &DatabaseConnection,
         name: &String,
         email: &String,
         hashed_password: String,
@@ -69,7 +77,7 @@ impl UserRepository {
             is_admin: ActiveValue::Set(false),
             created_dtm: ActiveValue::Set(Utc::now().naive_utc()),
         };
-        match user.insert(conn)
+        match user.insert(&self.db)
             .await
         {
             Ok(model) => Ok(model),

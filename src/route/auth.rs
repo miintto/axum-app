@@ -1,4 +1,4 @@
-use axum::{extract::State, routing::post, Extension, Router};
+use axum::{Extension, Router, routing::post};
 use sea_orm::DatabaseConnection;
 
 use crate::core::{
@@ -10,8 +10,8 @@ use crate::dto::auth::{LoginUser, RegisterUser};
 use crate::repository::user::UserRepository;
 use crate::service::auth::AuthService;
 
-pub fn get_router() -> Router<DatabaseConnection> {
-    let service = AuthService::new(UserRepository::new());
+pub fn get_router(db: &DatabaseConnection) -> Router {
+    let service = AuthService::new(UserRepository::new(&db));
 
     Router::new()
         .route("/login", post(login))
@@ -20,19 +20,17 @@ pub fn get_router() -> Router<DatabaseConnection> {
 }
 
 async fn login(
-    Extension(service): Extension<AuthService>,
-    State(conn): State<DatabaseConnection>,
+    Extension(service): Extension<AuthService<UserRepository>>,
     Json(body): Json<LoginUser>,
 ) -> Result<ApiResponse<String>, Http4xx> {
-    let token = service.login(conn, body).await?;
+    let token = service.login(body).await?;
     Ok(ApiResponse::new(Http2xx::Ok, token))
 }
 
 async fn register(
-    Extension(service): Extension<AuthService>,
-    State(conn): State<DatabaseConnection>,
+    Extension(service): Extension<AuthService<UserRepository>>,
     Json(body): Json<RegisterUser>,
 ) -> Result<ApiResponse<String>, Http4xx> {
-    let token = service.register(conn, body).await?;
+    let token = service.register(body).await?;
     Ok(ApiResponse::new(Http2xx::Created, token))
 }
