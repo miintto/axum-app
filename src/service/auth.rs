@@ -15,7 +15,7 @@ impl<R: UserRepositoryPort> AuthService<R> {
     pub async fn login(&self, data: LoginUser) -> Result<String, Http4xx> {
         let user = self.user_repo.find_by_email(&data.email)
             .await
-            .ok_or_else(||Http4xx::AuthenticationFail)?;
+            .ok_or_else(|| Http4xx::AuthenticationFail)?;
         if !bcrypt::verify(data.password, &user.hashed_password).unwrap() {
             return Err(Http4xx::AuthenticationFail)
         }
@@ -49,6 +49,7 @@ mod tests {
     use chrono::Utc;
     use mockall::mock;
     use crate::entity::user::Model;
+    use crate::repository::user::UserUpdateCommand;
     use super::*;
 
     mock! {
@@ -59,6 +60,7 @@ mod tests {
             async fn find_by_id(&self, id: i32) -> Option<Model>;
             async fn find_by_email(&self, email: &String) -> Option<Model>;
             async fn create_user(&self, name: &String, email: &String, hashed_password: String) -> Result<Model, Http4xx>;
+            async fn update_user(&self, user: Model, data: UserUpdateCommand) -> Result<Model, Http4xx>;
         }
     }
 
@@ -70,6 +72,7 @@ mod tests {
             hashed_password: bcrypt::hash(&password, 10).unwrap(),
             is_active: true,
             is_admin: false,
+            updated_dtm: None,
             created_dtm: Utc::now().naive_utc(),
         }        
     }
@@ -78,10 +81,10 @@ mod tests {
     async fn login_success() {
         let password = "password123";
         let user = generate_user(&password.to_string());
-        let mut mock = MockUserRepository::new();
-        mock.expect_find_by_email()
+        let mut mock_repo = MockUserRepository::new();
+        mock_repo.expect_find_by_email()
             .returning(move |_| Some(user.clone()));
-        let service = AuthService::new(mock);
+        let service = AuthService::new(mock_repo);
 
         let req = LoginUser {
             email: "test@example.com".to_string(),
@@ -94,10 +97,10 @@ mod tests {
 
     #[tokio::test]
     async fn login_fail_with_invalid_email() {
-        let mut mock = MockUserRepository::new();
-        mock.expect_find_by_email()
+        let mut mock_repo = MockUserRepository::new();
+        mock_repo.expect_find_by_email()
             .returning(|_| None );
-        let service = AuthService::new(mock);
+        let service = AuthService::new(mock_repo);
 
         let req = LoginUser {
             email: "test@example.com".to_string(),
@@ -112,10 +115,10 @@ mod tests {
     async fn login_fail_with_invalid_password() {
         let password = "password";
         let user = generate_user(&password.to_string());
-        let mut mock = MockUserRepository::new();
-        mock.expect_find_by_email()
+        let mut mock_repo = MockUserRepository::new();
+        mock_repo.expect_find_by_email()
             .returning(move |_| Some(user.clone()));
-        let service = AuthService::new(mock);
+        let service = AuthService::new(mock_repo);
 
         let req = LoginUser {
             email: "test@example.com".to_string(),
@@ -130,12 +133,12 @@ mod tests {
     async fn register_success() {
         let password = "password";
         let user = generate_user(&password.to_string());
-        let mut mock = MockUserRepository::new();
-        mock.expect_find_by_email()
+        let mut mock_repo = MockUserRepository::new();
+        mock_repo.expect_find_by_email()
             .returning(move |_| None);
-        mock.expect_create_user()
+        mock_repo.expect_create_user()
             .returning(move |_, _, _| Ok(user.clone()));
-        let service = AuthService::new(mock);
+        let service = AuthService::new(mock_repo);
 
         let req = RegisterUser {
             name: "name".to_string(),
@@ -152,8 +155,8 @@ mod tests {
     async fn register_fail_with_mismatched_password() {
         let password = "password";
         let password_check = "password_check";
-        let mock = MockUserRepository::new();
-        let service = AuthService::new(mock);
+        let mock_repo = MockUserRepository::new();
+        let service = AuthService::new(mock_repo);
 
         let req = RegisterUser {
             name: "name".to_string(),
@@ -170,10 +173,10 @@ mod tests {
     async fn register_fail_with_duplicated_email() {
         let password = "password";
         let user = generate_user(&password.to_string());
-        let mut mock = MockUserRepository::new();
-        mock.expect_find_by_email()
+        let mut mock_repo = MockUserRepository::new();
+        mock_repo.expect_find_by_email()
             .returning(move |_| Some(user.clone()));
-        let service = AuthService::new(mock);
+        let service = AuthService::new(mock_repo);
 
         let req = RegisterUser {
             name: "name".to_string(),

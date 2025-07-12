@@ -11,6 +11,11 @@ use sea_orm::{
 
 use crate::{core::http::Http4xx, entity::{prelude::User, user::{ActiveModel, Column, Model}}};
 
+pub struct UserUpdateCommand {
+    pub name: Option<String>,
+    pub email: Option<String>,
+}
+
 pub trait UserRepositoryPort: Send + Sync {
     async fn find_all(&self) -> Vec<Model>;
 
@@ -24,6 +29,8 @@ pub trait UserRepositoryPort: Send + Sync {
         email: &String,
         hashed_password: String,
     ) -> Result<Model, Http4xx>;
+
+    async fn update_user(&self, user: Model, data: UserUpdateCommand) -> Result<Model, Http4xx>;
 }
 
 #[derive(Clone)]
@@ -75,6 +82,7 @@ impl UserRepositoryPort for UserRepository {
             hashed_password: ActiveValue::Set(hashed_password.to_string()),
             is_active: ActiveValue::Set(true),
             is_admin: ActiveValue::Set(false),
+            updated_dtm: ActiveValue::NotSet,
             created_dtm: ActiveValue::Set(Utc::now().naive_utc()),
         };
         match user.insert(&self.db)
@@ -82,6 +90,21 @@ impl UserRepositoryPort for UserRepository {
         {
             Ok(model) => Ok(model),
             Err(_) => Err(Http4xx::BadRequest)
+        }
+    }
+
+    async fn update_user(&self, user: Model, command: UserUpdateCommand) -> Result<Model, Http4xx> {
+        let mut model: ActiveModel = user.into();
+        if let Some(name) = command.name {
+            model.name = ActiveValue::Set(name.to_string());
+        }
+        if let Some(email) = command.email {
+            model.email = ActiveValue::Set(email.to_string());
+        }
+        model.updated_dtm = ActiveValue::Set(Some(Utc::now().naive_utc()));
+        match model.update(&self.db).await {
+            Ok(updated_product) => Ok(updated_product),
+            Err(_) => Err(Http4xx::BadRequest),
         }
     }
 }

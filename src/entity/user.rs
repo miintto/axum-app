@@ -13,6 +13,7 @@ pub struct Model {
     pub hashed_password: String,
     pub is_active: bool,
     pub is_admin: bool,
+    pub updated_dtm: Option<NaiveDateTime>,
     pub created_dtm: NaiveDateTime,
 }
 
