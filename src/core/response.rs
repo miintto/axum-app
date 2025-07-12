@@ -1,8 +1,15 @@
 use axum::{Json, http::StatusCode, response::{IntoResponse, Response}};
 use serde::Serialize;
-use serde_json::json;
+use utoipa::ToSchema;
 
 use crate::core::http::HttpCode;
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct ResponseSchema<T> {
+    pub code: String,
+    pub message: String,
+    pub data: T,
+}
 
 pub struct ApiResponse<T> {
     status: StatusCode,
@@ -24,11 +31,11 @@ impl<T> ApiResponse<T> {
 
 impl<T: Serialize> IntoResponse for ApiResponse<T> {
     fn into_response(self) -> Response {
-        let message = json!({
-            "code": self.code,
-            "message": self.message,
-            "data": self.data,
-        });
-        (self.status, Json(message)).into_response()
+        let response = ResponseSchema {
+            code: self.code,
+            message: self.message,
+            data: self.data,
+        };
+        (self.status, Json(response)).into_response()
     }
 }

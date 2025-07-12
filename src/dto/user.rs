@@ -1,10 +1,11 @@
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
 use crate::entity::user::Model;
 use crate::repository::user::UserUpdateCommand;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct UpdateUser {
     pub name: Option<String>,
     pub email: Option<String>,
@@ -19,7 +20,7 @@ impl From<UpdateUser> for UserUpdateCommand {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct UserResponse {
     id: i32,
     name: String,

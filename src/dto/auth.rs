@@ -1,14 +1,15 @@
-use serde::{Deserialize};
+use serde::Deserialize;
+use utoipa::ToSchema;
 
 use crate::repository::user::UserCreateCommand;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct LoginUser {
     pub email: String,
     pub password: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct RegisterUser {
     pub name: String,
     pub email: String,

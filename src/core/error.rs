@@ -50,10 +50,10 @@ impl HttpCode for ApiError {
             ApiError::Unauthenticated => "인증 실패",
             ApiError::PermissionDenied => "권한이 없습니다",
             ApiError::InvalidParameter => "파라미터 에러",
-            ApiError::UserNotFound => "사용자를 찾을 수 없습니다.",
-            ApiError::PasswordMismatched => "패스워드가 서로 일치하지 않습니다.",
-            ApiError::DuplicatedEmail => "이미 사용중인 이메일입니다.",
-            ApiError::AuthenticationFail => "이메일 혹은 비밀번호가 일치하지 않습니다.",
+            ApiError::UserNotFound => "사용자를 찾을 수 없습니다",
+            ApiError::PasswordMismatched => "패스워드가 서로 일치하지 않습니다",
+            ApiError::DuplicatedEmail => "이미 사용중인 이메일입니다",
+            ApiError::AuthenticationFail => "이메일 혹은 비밀번호가 일치하지 않습니다",
             ApiError::ServerError => "서버 에러",
         }
     }

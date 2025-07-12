@@ -20,6 +20,9 @@ tower-http = { version = "0.6.6", features = ["full"] }
 tracing = "0.1.41"
 tracing-appender = "0.2.3"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
+utoipa = { version = "5.4.0", features = ["chrono"] }
+utoipa-axum = "0.2.0"
+utoipa-redoc = { version = "6.0.0", features = ["axum"] }
 
 [dev-dependencies]
 mockall = "0.13.1"
