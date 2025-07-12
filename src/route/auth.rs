@@ -2,9 +2,10 @@ use axum::{Extension, Router, routing::post};
 use sea_orm::DatabaseConnection;
 
 use crate::core::{
-    http::{Http2xx, Http4xx},
+    error::ApiError,
+    http::Http2xx,
     response::ApiResponse,
-    validate::Json,
+    validate::ValidJson,
 };
 use crate::dto::auth::{LoginUser, RegisterUser};
 use crate::repository::user::UserRepository;
@@ -21,16 +22,16 @@ pub fn get_router(db: &DatabaseConnection) -> Router {
 
 async fn login(
     Extension(service): Extension<AuthService<UserRepository>>,
-    Json(body): Json<LoginUser>,
-) -> Result<ApiResponse<String>, Http4xx> {
+    ValidJson(body): ValidJson<LoginUser>,
+) -> Result<ApiResponse<String>, ApiError> {
     let token = service.login(body).await?;
     Ok(ApiResponse::new(Http2xx::Ok, token))
 }
 
 async fn register(
     Extension(service): Extension<AuthService<UserRepository>>,
-    Json(body): Json<RegisterUser>,
-) -> Result<ApiResponse<String>, Http4xx> {
+    ValidJson(body): ValidJson<RegisterUser>,
+) -> Result<ApiResponse<String>, ApiError> {
     let token = service.register(body).await?;
     Ok(ApiResponse::new(Http2xx::Created, token))
 }

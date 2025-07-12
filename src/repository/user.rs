@@ -8,8 +8,15 @@ use sea_orm::{
     QueryFilter,
     QueryOrder,
 };
+use tracing::info;
 
-use crate::{core::http::Http4xx, entity::{prelude::User, user::{ActiveModel, Column, Model}}};
+use crate::{core::error::ApiError, entity::{prelude::User, user::{ActiveModel, Column, Model}}};
+
+pub struct UserCreateCommand {
+    pub name: String,
+    pub email: String,
+    pub hashed_password: String,
+}
 
 pub struct UserUpdateCommand {
     pub name: Option<String>,
@@ -17,20 +24,15 @@ pub struct UserUpdateCommand {
 }
 
 pub trait UserRepositoryPort: Send + Sync {
-    async fn find_all(&self) -> Vec<Model>;
+    async fn find_all(&self) -> Result<Vec<Model>, ApiError>;
 
-    async fn find_by_id(&self, id: i32) -> Option<Model>;
+    async fn find_by_id(&self, id: i32) -> Result<Option<Model>, ApiError>;
 
-    async fn find_by_email(&self, email: &String) -> Option<Model>;
+    async fn find_by_email(&self, email: &String) -> Result<Option<Model>, ApiError>;
 
-    async fn create_user(
-        &self,
-        name: &String,
-        email: &String,
-        hashed_password: String,
-    ) -> Result<Model, Http4xx>;
+    async fn create_user(&self, command: UserCreateCommand) -> Result<Model, ApiError>;
 
-    async fn update_user(&self, user: Model, data: UserUpdateCommand) -> Result<Model, Http4xx>;
+    async fn update_user(&self, user: Model, command: UserUpdateCommand) -> Result<Model, ApiError>;
 }
 
 #[derive(Clone)]
@@ -45,41 +47,54 @@ impl UserRepository {
 }
 
 impl UserRepositoryPort for UserRepository {
-    async fn find_all(&self) -> Vec<Model> {
-        User::find()
+    async fn find_all(&self) -> Result<Vec<Model>, ApiError> {
+        match User::find()
             .order_by_asc(Column::Id)
             .all(&self.db)
             .await
-            .unwrap()
+        {
+            Ok(model) => Ok(model),
+            Err(err) => {
+                info!("Database Error : {}", err);
+                Err(ApiError::ServerError)
+            },
+        }
     }
 
-    async fn find_by_id(&self, id: i32) -> Option<Model> {
-        User::find()
+    async fn find_by_id(&self, id: i32) -> Result<Option<Model>, ApiError> {
+        match User::find()
             .filter(Column::Id.eq(id))
             .one(&self.db)
             .await
-            .unwrap()
+        {
+            Ok(model) => Ok(model),
+            Err(err) => {
+                info!("Database Error : {}", err);
+                Err(ApiError::ServerError)
+            },
+        }
     }
 
-    async fn find_by_email(&self, email: &String) -> Option<Model> {
-        User::find()
+    async fn find_by_email(&self, email: &String) -> Result<Option<Model>, ApiError> {
+        match User::find()
             .filter(Column::Email.eq(email))
             .one(&self.db)
             .await
-            .unwrap()
+        {
+            Ok(model) => Ok(model),
+            Err(err) => {
+                info!("Database Error : {}", err);
+                Err(ApiError::ServerError)
+            },
+        }
     }
 
-    async fn create_user(
-        &self,
-        name: &String,
-        email: &String,
-        hashed_password: String,
-    ) -> Result<Model, Http4xx> {
+    async fn create_user(&self, command: UserCreateCommand) -> Result<Model, ApiError>{
         let user = ActiveModel {
             id: ActiveValue::NotSet,
-            name: ActiveValue::Set(name.to_string()),
-            email: ActiveValue::Set(email.to_string()),
-            hashed_password: ActiveValue::Set(hashed_password.to_string()),
+            name: ActiveValue::Set(command.name),
+            email: ActiveValue::Set(command.email),
+            hashed_password: ActiveValue::Set(command.hashed_password),
             is_active: ActiveValue::Set(true),
             is_admin: ActiveValue::Set(false),
             updated_dtm: ActiveValue::NotSet,
@@ -89,11 +104,14 @@ impl UserRepositoryPort for UserRepository {
             .await
         {
             Ok(model) => Ok(model),
-            Err(_) => Err(Http4xx::BadRequest)
+            Err(err) => {
+                info!("Database Error : {}", err);
+                Err(ApiError::ServerError)
+            },
         }
     }
 
-    async fn update_user(&self, user: Model, command: UserUpdateCommand) -> Result<Model, Http4xx> {
+    async fn update_user(&self, user: Model, command: UserUpdateCommand) -> Result<Model, ApiError> {
         let mut model: ActiveModel = user.into();
         if let Some(name) = command.name {
             model.name = ActiveValue::Set(name.to_string());
@@ -103,8 +121,11 @@ impl UserRepositoryPort for UserRepository {
         }
         model.updated_dtm = ActiveValue::Set(Some(Utc::now().naive_utc()));
         match model.update(&self.db).await {
-            Ok(updated_product) => Ok(updated_product),
-            Err(_) => Err(Http4xx::BadRequest),
+            Ok(updated) => Ok(updated),
+            Err(err) => {
+                info!("Database Error : {}", err);
+                Err(ApiError::ServerError)
+            },
         }
     }
 }

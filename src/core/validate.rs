@@ -1,23 +1,23 @@
-use axum::extract::{Request, rejection::JsonRejection, FromRequest};
+use axum::{Json, extract::{Request, rejection::JsonRejection, FromRequest}};
 
-use crate::core::http::Http4xx;
+use crate::core::error::ApiError;
 
-pub struct Json<T>(pub T);
+pub struct ValidJson<T>(pub T);
 
-impl<S, T> FromRequest<S> for Json<T>
+impl<S, T> FromRequest<S> for ValidJson<T>
 where
-    axum::Json<T>: FromRequest<S, Rejection = JsonRejection>,
+    Json<T>: FromRequest<S, Rejection = JsonRejection>,
     S: Send + Sync,
 {
-    type Rejection = Http4xx;
+    type Rejection = ApiError;
 
     async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
-        match axum::Json::<T>::from_request(req, state).await {
+        match Json::<T>::from_request(req, state).await {
             Ok(value) => Ok(Self(value.0)),
             Err(rejection) => {
                 match rejection {
-                    JsonRejection::JsonDataError(_) => Err(Http4xx::InvalidParameter),
-                    _ => Err(Http4xx::BadRequest),
+                    JsonRejection::JsonDataError(_) => Err(ApiError::InvalidParameter),
+                    _ => Err(ApiError::BadRequest),
                 }
             }
         }

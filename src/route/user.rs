@@ -2,10 +2,11 @@ use axum::{Extension, Router, extract::Path, routing::get};
 use sea_orm::DatabaseConnection;
 
 use crate::core::{
-    http::{Http2xx, Http4xx},
+    error::ApiError,
+    http::Http2xx,
     permission::{AdminOnly, Authenticated},
     response::ApiResponse,
-    validate::Json,
+    validate::ValidJson,
 };
 use crate::dto::user::{UpdateUser, UserResponse};
 use crate::repository::user::UserRepository;
@@ -30,45 +31,45 @@ pub fn get_router(db: &DatabaseConnection) -> Router {
 }
 
 async fn get_user_list(
-    AdminOnly(_): AdminOnly,
+    _: AdminOnly,
     Extension(service): Extension<UserService<UserRepository>>,
-) -> Result<ApiResponse<Vec<UserResponse>>, Http4xx> {
-    let users = service.get_user_list().await;
+) -> Result<ApiResponse<Vec<UserResponse>>, ApiError> {
+    let users = service.get_user_list().await?;
     Ok(ApiResponse::new(Http2xx::Ok, users))
 }
 
 async fn get_user(
-    AdminOnly(_): AdminOnly,
+    _: AdminOnly,
     Extension(service): Extension<UserService<UserRepository>>,
     Path(id): Path<i32>,
-) -> Result<ApiResponse<UserResponse>, Http4xx> {
+) -> Result<ApiResponse<UserResponse>, ApiError> {
     let user = service.get_user(id).await?;
     Ok(ApiResponse::new(Http2xx::Ok, user))
 }
 
 async fn update_user_info(
-    AdminOnly(_): AdminOnly,
+    _: AdminOnly,
     Extension(service): Extension<UserService<UserRepository>>,
     Path(id): Path<i32>,
-    Json(body): Json<UpdateUser>,
-) -> Result<ApiResponse<UserResponse>, Http4xx> {
+    ValidJson(body): ValidJson<UpdateUser>,
+) -> Result<ApiResponse<UserResponse>, ApiError> {
     let user = service.update_user(id, body).await?;
     Ok(ApiResponse::new(Http2xx::Ok, user))
 }
 
 async fn get_my_info(
-    Authenticated(claims): Authenticated,
+    permission: Authenticated,
     Extension(service): Extension<UserService<UserRepository>>,
-) -> Result<ApiResponse<UserResponse>, Http4xx> {
-    let user = service.get_user(claims.user_id).await?;
+) -> Result<ApiResponse<UserResponse>, ApiError> {
+    let user = service.get_user(permission.claims.user_id).await?;
     Ok(ApiResponse::new(Http2xx::Ok, user))
 }
 
 async fn update_my_info(
-    Authenticated(claims): Authenticated,
+    permission: Authenticated,
     Extension(service): Extension<UserService<UserRepository>>,
-    Json(body): Json<UpdateUser>,
-) -> Result<ApiResponse<UserResponse>, Http4xx> {
-    let user = service.update_user(claims.user_id, body).await?;
+    ValidJson(body): ValidJson<UpdateUser>,
+) -> Result<ApiResponse<UserResponse>, ApiError> {
+    let user = service.update_user(permission.claims.user_id, body).await?;
     Ok(ApiResponse::new(Http2xx::Ok, user))
 }

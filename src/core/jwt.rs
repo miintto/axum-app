@@ -11,7 +11,7 @@ use jsonwebtoken::{
 };
 use serde::{Serialize, Deserialize};
 
-use crate::{config::settings::SECRET_KEY, core::http::Http4xx};
+use crate::{config::settings::SECRET_KEY, core::error::ApiError};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
@@ -38,11 +38,11 @@ pub fn encode_jwt(user_id: i32, email: &str, permission_level: i8) -> String {
     ).unwrap()
 }
 
-pub fn decode_jwt(token: &str) -> Result<TokenData<Claims>, Http4xx>{
+pub fn decode_jwt(token: &str) -> Result<TokenData<Claims>, ApiError>{
     decode(
         &token,
         &DecodingKey::from_secret(SECRET_KEY.as_bytes()),
         &Validation::new(Algorithm::HS256),
     )
-    .map_err(|_| Http4xx::Unauthenticated)
+    .map_err(|_| ApiError::Unauthenticated)
 }

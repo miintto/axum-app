@@ -1,39 +1,27 @@
 use axum::{extract::FromRequestParts, http::request::Parts};
 
-use crate::core::{authentication::Authentication, http::Http4xx, jwt::Claims};
+use crate::core::{authentication::Authentication, error::ApiError, jwt::Claims};
 
-pub struct AdminOnly(pub Claims);
+pub type AdminOnly = ClaimsWrapper<2>;
 
-pub struct Authenticated(pub Claims);
+pub type Authenticated = ClaimsWrapper<1>;
 
-impl<S> FromRequestParts<S> for AdminOnly
-where
-    S: Send + Sync,
-{
-    type Rejection = Http4xx;
-
-    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
-        let Authentication(claims) = Authentication::from_request_parts(parts, state).await?;
-        if claims.permission > 1 {
-            Ok(AdminOnly(claims))
-        } else {
-            Err(Http4xx::PermissionDenied)
-        }
-    }
+pub struct ClaimsWrapper<const LEVEL: i8> {
+    pub claims: Claims,
 }
 
-impl<S> FromRequestParts<S> for Authenticated
+impl<S, const LEVEL: i8> FromRequestParts<S> for ClaimsWrapper<LEVEL>
 where
     S: Send + Sync,
 {
-    type Rejection = Http4xx;
+    type Rejection = ApiError;
 
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
         let Authentication(claims) = Authentication::from_request_parts(parts, state).await?;
-        if claims.permission > 0 {
-            Ok(Authenticated(claims))
+        if claims.permission >= LEVEL {
+            Ok(ClaimsWrapper { claims })
         } else {
-            Err(Http4xx::PermissionDenied)
+            Err(ApiError::PermissionDenied)
         }
     }
 }

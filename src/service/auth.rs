@@ -1,4 +1,4 @@
-use crate::core::{http::Http4xx, jwt::encode_jwt};
+use crate::core::{error::ApiError, jwt::encode_jwt};
 use crate::dto::auth::{LoginUser, RegisterUser};
 use crate::repository::user::UserRepositoryPort;
 
@@ -12,27 +12,23 @@ impl<R: UserRepositoryPort> AuthService<R> {
         Self { user_repo }
     }
 
-    pub async fn login(&self, data: LoginUser) -> Result<String, Http4xx> {
+    pub async fn login(&self, data: LoginUser) -> Result<String, ApiError> {
         let user = self.user_repo.find_by_email(&data.email)
-            .await
-            .ok_or_else(|| Http4xx::AuthenticationFail)?;
+            .await?
+            .ok_or_else(|| ApiError::AuthenticationFail)?;
         if !bcrypt::verify(data.password, &user.hashed_password).unwrap() {
-            return Err(Http4xx::AuthenticationFail)
+            return Err(ApiError::AuthenticationFail)
         }
         Ok(encode_jwt(user.id, &user.email, self.get_permission_level(user.is_admin)))
     }
 
-    pub async fn register(&self, data: RegisterUser) -> Result<String, Http4xx> {
+    pub async fn register(&self, data: RegisterUser) -> Result<String, ApiError> {
         if data.password != data.password_check {
-            return Err(Http4xx::PasswordMismatched);
-        } else if let Some(_) = self.user_repo.find_by_email(&data.email).await {
-            return Err(Http4xx::DuplicatedEmail);
+            return Err(ApiError::PasswordMismatched);
+        } else if let Some(_) = self.user_repo.find_by_email(&data.email).await? {
+            return Err(ApiError::DuplicatedEmail);
         }
-        let user: crate::entity::user::Model = self.user_repo.create_user(
-            &data.name,
-            &data.email,
-            bcrypt::hash(&data.password, 10).unwrap()
-        ).await?;
+        let user = self.user_repo.create_user(data.into()).await?;
         Ok(encode_jwt(user.id, &user.email, self.get_permission_level(user.is_admin)))
     }
 
@@ -49,18 +45,18 @@ mod tests {
     use chrono::Utc;
     use mockall::mock;
     use crate::entity::user::Model;
-    use crate::repository::user::UserUpdateCommand;
+    use crate::repository::user::{UserCreateCommand, UserUpdateCommand};
     use super::*;
 
     mock! {
         UserRepository {}
 
         impl UserRepositoryPort for UserRepository {
-            async fn find_all(&self) -> Vec<Model>;
-            async fn find_by_id(&self, id: i32) -> Option<Model>;
-            async fn find_by_email(&self, email: &String) -> Option<Model>;
-            async fn create_user(&self, name: &String, email: &String, hashed_password: String) -> Result<Model, Http4xx>;
-            async fn update_user(&self, user: Model, data: UserUpdateCommand) -> Result<Model, Http4xx>;
+            async fn find_all(&self) -> Result<Vec<Model>, ApiError>;
+            async fn find_by_id(&self, id: i32) -> Result<Option<Model>, ApiError>;
+            async fn find_by_email(&self, email: &String) -> Result<Option<Model>, ApiError>;
+            async fn create_user(&self, command: UserCreateCommand) -> Result<Model, ApiError>;
+            async fn update_user(&self, user: Model, data: UserUpdateCommand) -> Result<Model, ApiError>;
         }
     }
 
@@ -83,7 +79,7 @@ mod tests {
         let user = generate_user(&password.to_string());
         let mut mock_repo = MockUserRepository::new();
         mock_repo.expect_find_by_email()
-            .returning(move |_| Some(user.clone()));
+            .returning(move |_| Ok(Some(user.clone())));
         let service = AuthService::new(mock_repo);
 
         let req = LoginUser {
@@ -99,7 +95,7 @@ mod tests {
     async fn login_fail_with_invalid_email() {
         let mut mock_repo = MockUserRepository::new();
         mock_repo.expect_find_by_email()
-            .returning(|_| None );
+            .returning(|_| Ok(None));
         let service = AuthService::new(mock_repo);
 
         let req = LoginUser {
@@ -108,7 +104,7 @@ mod tests {
         };
         let result = service.login(req).await;
 
-        assert!(matches!(result, Err(Http4xx::AuthenticationFail)));
+        assert!(matches!(result, Err(ApiError::AuthenticationFail)));
     }
 
     #[tokio::test]
@@ -117,7 +113,7 @@ mod tests {
         let user = generate_user(&password.to_string());
         let mut mock_repo = MockUserRepository::new();
         mock_repo.expect_find_by_email()
-            .returning(move |_| Some(user.clone()));
+            .returning(move |_| Ok(Some(user.clone())));
         let service = AuthService::new(mock_repo);
 
         let req = LoginUser {
@@ -126,7 +122,7 @@ mod tests {
         };
         let result = service.login(req).await;
 
-        assert!(matches!(result, Err(Http4xx::AuthenticationFail)));
+        assert!(matches!(result, Err(ApiError::AuthenticationFail)));
     }
 
     #[tokio::test]
@@ -135,9 +131,9 @@ mod tests {
         let user = generate_user(&password.to_string());
         let mut mock_repo = MockUserRepository::new();
         mock_repo.expect_find_by_email()
-            .returning(move |_| None);
+            .returning(move |_| Ok(None));
         mock_repo.expect_create_user()
-            .returning(move |_, _, _| Ok(user.clone()));
+            .returning(move |_| Ok(user.clone()));
         let service = AuthService::new(mock_repo);
 
         let req = RegisterUser {
@@ -166,7 +162,7 @@ mod tests {
         };
         let result = service.register(req).await;
 
-        assert!(matches!(result, Err(Http4xx::PasswordMismatched)));
+        assert!(matches!(result, Err(ApiError::PasswordMismatched)));
     }
 
     #[tokio::test]
@@ -175,7 +171,7 @@ mod tests {
         let user = generate_user(&password.to_string());
         let mut mock_repo = MockUserRepository::new();
         mock_repo.expect_find_by_email()
-            .returning(move |_| Some(user.clone()));
+            .returning(move |_| Ok(Some(user.clone())));
         let service = AuthService::new(mock_repo);
 
         let req = RegisterUser {
@@ -186,6 +182,6 @@ mod tests {
         };
         let result = service.register(req).await;
 
-        assert!(matches!(result, Err(Http4xx::DuplicatedEmail)));
+        assert!(matches!(result, Err(ApiError::DuplicatedEmail)));
     }
 }
